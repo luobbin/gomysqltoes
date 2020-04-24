@@ -126,7 +126,7 @@ func task_increment() {
 func task_fullload() {
 	bT := time.Now()
 	numOfConcurrency := runtime.NumCPU()
-	//log.Printf("CPU Tota：%d\n", numOfConcurrency)
+	log.Printf("CPU Tota：%d\n", numOfConcurrency)
 	runtime.GOMAXPROCS(numOfConcurrency)
 
 	var jobsize int

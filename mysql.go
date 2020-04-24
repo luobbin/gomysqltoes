@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func get_mysql() *sql.DB {
@@ -35,7 +36,7 @@ func get_mysql_total(sql_str string) int {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//log.Printf("Get the total number of SQL as：%v,total number：%d \n", sql_str,total)
+	log.Printf("Get the total number of SQL as：%v,total number：%d \n", sql_str, total)
 	return total
 }
 
@@ -74,15 +75,16 @@ func get_mysql_latsid(sql_str string, field string) int {
 }
 
 //Read the data from MySQL and turn it into JSON, and then use the cooperation process to concurrent to es library
-func query_mysql_to_es_by_startid(sql_str string,id_start,id_end int, job chan int, wg *sync.WaitGroup)  {
+func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan int, wg *sync.WaitGroup) {
 	defer close(job)
 	defer wg.Done()
-	beginId := id_start	//get start ID
+	beginId := id_start //get start ID
 	pageNum := 0
 
-	for {//Process data on each page
+	for { //Process data on each page
 		buf := new(bytes.Buffer)
 		query_sql_str := strings.Replace(sql_str, ":sql_last_value", strconv.Itoa(beginId), 1) + " ORDER BY " + primary_key + " ASC LIMIT " + strconv.Itoa(page_size)
+		log.Println("the query_sql_str is", query_sql_str)
 		db := get_mysql()
 		defer db.Close()
 
@@ -104,11 +106,11 @@ func query_mysql_to_es_by_startid(sql_str string,id_start,id_end int, job chan i
 					record[columns[i]] = string(col.([]byte))
 				}
 			}
-			beginId,_ = strconv.Atoi(record[primary_key])
+			beginId, _ = strconv.Atoi(record[primary_key])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
-				log.Fatalf("Cannot encode %v %d: %s", index_name,beginId, err)
+				log.Fatalf("Cannot encode %v %d: %s", index_name, beginId, err)
 			}
 			// Append newline to the data payload
 			json_data = append(json_data, "\n"...)
@@ -117,20 +119,21 @@ func query_mysql_to_es_by_startid(sql_str string,id_start,id_end int, job chan i
 			buf.Write(meta)
 			buf.Write(json_data)
 		}
-		//log.Println("the last ID is",beginId)
+		log.Println("the last ID is", beginId)
 		wg.Add(1)
-		go save_es_data(buf,index_name,wg)
-		pageNum ++
-		if beginId > id_end{
+		go save_es_data(buf, index_name, wg)
+		pageNum++
+		if beginId >= id_end {
 			break
 		}
+		time.Sleep(time.Second)
 	}
-	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end,pageNum)
+	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end, pageNum)
 	job <- pageNum
 }
 
 //Incremental data processing
-func query_mysql_to_es_by_startid_nochan(sql_str string,id_start,id_end int)  {
+func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 	beginId := id_start
 	pageNum := 0
 	//Process data on each page
@@ -158,7 +161,7 @@ func query_mysql_to_es_by_startid_nochan(sql_str string,id_start,id_end int)  {
 					record[columns[i]] = string(col.([]byte))
 				}
 			}
-			beginId,_ = strconv.Atoi(record[primary_key])
+			beginId, _ = strconv.Atoi(record[primary_key])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
@@ -174,14 +177,12 @@ func query_mysql_to_es_by_startid_nochan(sql_str string,id_start,id_end int)  {
 		}
 		//log.Println("the last ID is",beginId)
 		wg.Add(1)
-		go save_es_data(buf,index_name,&wg)
+		go save_es_data(buf, index_name, &wg)
 		wg.Wait()
-		pageNum ++
-		if beginId >= id_end{
+		pageNum++
+		if beginId >= id_end {
 			break
 		}
 	}
 	//log.Printf("The number of pages processed by incremental task from %d to %d is: %d\n", id_start, id_end,pageNum)
 }
-
-
