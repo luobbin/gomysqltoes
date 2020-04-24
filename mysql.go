@@ -28,9 +28,9 @@ func get_mysql_total(sql_str string) int {
 
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
-	reg := regexp.MustCompile(`^select(?s:(.*?))from`)
-	sql_str = reg.ReplaceAllString(sql_str, "select count(*) from")
-
+	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
+	sql_str = reg.ReplaceAllString(sql_str, "select count(*) from ")
+	//log.Printf("Get the total number of SQL is：%v \n", sql_str)
 	err := db.QueryRow(sql_str).Scan(&total)
 	if err != nil {
 		log.Fatal(err)
@@ -46,14 +46,15 @@ func get_mysql_firstid(sql_str string, field string, offset int) int {
 	defer db.Close()
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
-	reg := regexp.MustCompile(`^select(?s:(.*?))from`)
-	sql_str = reg.ReplaceAllString(sql_str, "select "+field+" from")
-	sql_str = sql_str + " ORDER BY " + field + " ASC LIMIT 1 OFFSET " + strconv.Itoa(offset)
-
+	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
+	sql_str = reg.ReplaceAllString(sql_str, "select "+field+" from ")
+	sql_str = sql_str + " ORDER BY " + field + " ASC LIMIT " + strconv.Itoa(offset) + ",1"
+	log.Printf("Get the begin ID of SQL is：%v \n", sql_str)
 	err := db.QueryRow(sql_str).Scan(&id)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Get the begin ID of SQL as：%v,total number：%d \n", sql_str, id)
 	return id
 }
 
@@ -64,12 +65,14 @@ func get_mysql_latsid(sql_str string, field string) int {
 	defer db.Close()
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
-	reg := regexp.MustCompile(`^select(?s:(.*?))from`)
-	sql_str = reg.ReplaceAllString(sql_str, "select MAX("+field+") AS id from")
+	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
+	sql_str = reg.ReplaceAllString(sql_str, "select MAX("+field+") AS id from ")
+	//log.Printf("Get the end ID of SQL is：%v \n", sql_str)
 	err := db.QueryRow(sql_str).Scan(&id)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Get the end ID of SQL as：%v,total number：%d \n", sql_str, id)
 	return id
 }
 
@@ -99,6 +102,9 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 		for rows.Next() {
 			//Save row data to record dictionary
 			err = rows.Scan(scanArgs...)
+			if err != nil {
+				log.Printf("Sql row scan error %v \n", err)
+			}
 			record := make(map[string]string)
 			for i, col := range values {
 				if col != nil {
@@ -154,6 +160,9 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 
 		for rows.Next() {
 			err = rows.Scan(scanArgs...)
+			if err != nil {
+				log.Printf("Sql row scan error %v \n", err)
+			}
 			record := make(map[string]string)
 			for i, col := range values {
 				if col != nil {

@@ -32,16 +32,19 @@ var (
 	err             error
 	configFile      = flag.String("configFile", "etc/conf.ini", "Set profile file：")
 	manual          = flag.String("manual", "0", "manual control fullload：")
+	logon           = flag.String("logon", "0", "manual control fullload：")
 )
 
 //command：go run mysqltoes -configFile etc/user_conf.ini
 func init() {
 	flag.Parse()
-	logFile, err := os.OpenFile(`etc/record.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Printf("Log file open Error: %v", err)
+	if *logon != "0" {
+		logFile, err := os.OpenFile(`etc/record.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Printf("Log file open Error: %v", err)
+		}
+		log.SetOutput(logFile)
 	}
-	log.SetOutput(logFile)
 }
 
 func main() {
@@ -73,13 +76,14 @@ func main() {
 		makeConf(configDataFile) //Create data profile
 		dataConf, _ = goconfig.LoadConfigFile(configDataFile)
 	}
+
 	if *manual == "0" {
 		run()
 	} else {
 		task_fullload()
 	}
 
-	//
+	//task_fullload()
 
 }
 
@@ -135,18 +139,17 @@ func task_fullload() {
 	log.Printf("CPU Tota：%d\n", numOfConcurrency)
 	runtime.GOMAXPROCS(numOfConcurrency)
 
-	var jobsize int
-	//Increase the number of full backups
-	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
-	setDataConfValue("fullloadTimes", strconv.Itoa(fullloadTimes), "")
 	//Initialize es index and other data
 	es_begin(index_name)
 
 	total_data := get_mysql_total(sql_str)
 	//Number of processing items corresponding to each task
+	var jobsize int
 	jobsize = total_data / numOfConcurrency
 	jobs := make([]chan int, numOfConcurrency)
 	var id_start, id_end int
+	//Increase the number of full backups
+	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
 	for i := 0; i < numOfConcurrency; i++ {
 		jobs[i] = make(chan int)
 		//get starting primary key ID
@@ -156,7 +159,11 @@ func task_fullload() {
 			id_start = id_end
 		}
 		//Get the ending primary key ID
-		id_end = get_mysql_firstid(sql_str, primary_key, (i+1)*jobsize)
+		if i+1 == numOfConcurrency {
+			id_end = get_mysql_latsid(sql_str, primary_key)
+		} else {
+			id_end = get_mysql_firstid(sql_str, primary_key, (i+1)*jobsize)
+		}
 		if i+1 == numOfConcurrency && fullloadTimes == 1 { //First fullload store last ID
 			setDataConfValue("lastPrimaryId", strconv.Itoa(id_end), "")
 		}
@@ -170,6 +177,9 @@ func task_fullload() {
 		sum += res
 	}
 	wg.Wait()
+
+	//save success times
+	setDataConfValue("fullloadTimes", strconv.Itoa(fullloadTimes), "")
 	//Restore index configuration at end
 	es_end(index_name)
 
