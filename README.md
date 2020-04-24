@@ -1,0 +1,2 @@
+# gomysqltoes
+mysql批量导入elasticsearch库工具
