@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/robfig/cron/v3"
 	"log"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -36,6 +37,11 @@ var (
 //command：go run mysqltoes -configFile etc/user_conf.ini
 func init() {
 	flag.Parse()
+	logFile, err := os.OpenFile(`etc/record.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Printf("Log file open Error: %v", err)
+	}
+	log.SetOutput(logFile)
 }
 
 func main() {
