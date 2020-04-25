@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/Unknwon/goconfig"
@@ -34,6 +35,12 @@ var (
 	manual          = flag.String("manual", "0", "manual control fullload：")
 	logon           = flag.String("logon", "0", "manual control fullload：")
 )
+
+type Chandata struct {
+	indexName string
+	buf       *bytes.Buffer
+	Wg        *sync.WaitGroup
+}
 
 //command：go run mysqltoes -configFile etc/user_conf.ini
 func init() {

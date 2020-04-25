@@ -82,7 +82,10 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 	defer wg.Done()
 	beginId := id_start //get start ID
 	pageNum := 0
-
+	var tasks [10]chan<- Chandata
+	for i := 0; i < 10; i++ {
+		tasks[i] = CreateChan()
+	}
 	for { //Process data on each page
 		buf := new(bytes.Buffer)
 		query_sql_str := strings.Replace(sql_str, ":sql_last_value", strconv.Itoa(beginId), 1) + " ORDER BY " + primary_key + " ASC LIMIT " + strconv.Itoa(page_size)
@@ -126,7 +129,8 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 		}
 		log.Println("the last ID is", beginId)
 		wg.Add(1)
-		go save_es_data(buf, index_name, wg)
+		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: wg}
+		//go save_es_data(buf, index_name, tasks,  wg)
 		pageNum++
 		if beginId >= id_end {
 			break
@@ -141,6 +145,10 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 	beginId := id_start
 	pageNum := 0
+	var tasks [10]chan<- Chandata
+	for i := 0; i < 10; i++ {
+		tasks[i] = CreateChan()
+	}
 	//Process data on each page
 	for {
 		buf := new(bytes.Buffer)
@@ -185,7 +193,8 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		}
 		//log.Println("the last ID is",beginId)
 		wg.Add(1)
-		go save_es_data(buf, index_name, &wg)
+		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: &wg}
+		//go save_es_data(buf, index_name, &wg)
 		wg.Wait()
 		pageNum++
 		if beginId >= id_end {
@@ -193,4 +202,10 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		}
 	}
 	//log.Printf("The number of pages processed by incremental task from %d to %d is: %d\n", id_start, id_end,pageNum)
+}
+
+func CreateChan() chan<- Chandata {
+	task := make(chan Chandata)
+	go save_es_data(task)
+	return task
 }
