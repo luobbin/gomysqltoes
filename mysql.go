@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func get_mysql() *sql.DB {
@@ -135,7 +136,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 		if beginId >= id_end {
 			break
 		}
-		//time.Sleep(time.Second)
+		time.Sleep(time.Second)
 	}
 	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end, pageNum)
 	job <- pageNum
@@ -200,6 +201,7 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		if beginId >= id_end {
 			break
 		}
+		time.Sleep(time.Second)
 	}
 	//log.Printf("The number of pages processed by incremental task from %d to %d is: %d\n", id_start, id_end,pageNum)
 }
