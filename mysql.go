@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 func get_mysql() *sql.DB {
@@ -77,8 +76,7 @@ func get_mysql_latsid(sql_str string, field string) int {
 	return id
 }
 
-//Read the data from MySQL and turn it into JSON, and then use the cooperation process to concurrent to es library
-func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan int, wg *sync.WaitGroup) {
+func query_mysql_to_es_by_startid_chan(sql_str string, id_start, id_end int, job chan int, wg *sync.WaitGroup) {
 	defer close(job)
 	defer wg.Done()
 	beginId := id_start //get start ID
@@ -92,7 +90,6 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 		query_sql_str := strings.Replace(sql_str, ":sql_last_value", strconv.Itoa(beginId), 1) + " ORDER BY " + primary_key + " ASC LIMIT " + strconv.Itoa(page_size)
 		log.Println("the query_sql_str is", query_sql_str)
 		db := get_mysql()
-		defer db.Close()
 
 		rows, err := db.Query(query_sql_str)
 		checkErr(err)
@@ -133,13 +130,78 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int, job chan
 		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: wg}
 		//go save_es_data(buf, index_name, tasks,  wg)
 		pageNum++
+		db.Close()
 		if beginId >= id_end {
 			break
 		}
-		time.Sleep(time.Second)
+		//time.Sleep(time.Second*5)
 	}
 	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end, pageNum)
 	job <- pageNum
+}
+
+//Read the data from MySQL and turn it into JSON, and then use the cooperation process to concurrent to es library
+func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
+	beginId := id_start //get start ID
+	pageNum := 0
+	var tasks [10]chan<- Chandata
+	for i := 0; i < 10; i++ {
+		tasks[i] = CreateChan()
+	}
+	for { //Process data on each page
+		buf := new(bytes.Buffer)
+		query_sql_str := strings.Replace(sql_str, ":sql_last_value", strconv.Itoa(beginId), 1) + " ORDER BY " + primary_key + " ASC LIMIT " + strconv.Itoa(page_size)
+		log.Println("the query_sql_str is", query_sql_str)
+		db := get_mysql()
+
+		rows, err := db.Query(query_sql_str)
+		checkErr(err)
+		columns, _ := rows.Columns()
+		scanArgs := make([]interface{}, len(columns))
+		values := make([]interface{}, len(columns))
+		for i := range values {
+			scanArgs[i] = &values[i]
+		}
+
+		for rows.Next() {
+			//Save row data to record dictionary
+			err = rows.Scan(scanArgs...)
+			if err != nil {
+				log.Printf("Sql row scan error %v \n", err)
+			}
+			record := make(map[string]string)
+			for i, col := range values {
+				if col != nil {
+					record[columns[i]] = string(col.([]byte))
+				}
+			}
+			beginId, _ = strconv.Atoi(record[primary_key])
+			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
+			json_data, err := json.Marshal(record)
+			if err != nil {
+				log.Fatalf("Cannot encode %v %d: %s", index_name, beginId, err)
+			}
+			// Append newline to the data payload
+			json_data = append(json_data, "\n"...)
+			// Append payloads to the buffer (ignoring write errors)
+			buf.Grow(len(meta) + len(json_data))
+			buf.Write(meta)
+			buf.Write(json_data)
+		}
+		log.Println("the last ID is", beginId)
+		wg.Add(1)
+		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: wg}
+		//go save_es_data(buf, index_name, tasks,  wg)
+		pageNum++
+		db.Close()
+		if beginId >= id_end {
+			break
+		}
+		//time.Sleep(time.Second*5)
+	}
+	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end, pageNum)
+	wg.Wait()
+	return pageNum
 }
 
 //Incremental data processing
@@ -155,7 +217,6 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		buf := new(bytes.Buffer)
 		query_sql_str := strings.Replace(sql_str, ":sql_last_value", strconv.Itoa(beginId), 1) + " ORDER BY " + primary_key + " ASC LIMIT " + strconv.Itoa(page_size)
 		db := get_mysql()
-		defer db.Close()
 
 		rows, err := db.Query(query_sql_str) //"SELECT * FROM user"
 		checkErr(err)
@@ -198,10 +259,11 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		//go save_es_data(buf, index_name, &wg)
 		wg.Wait()
 		pageNum++
+		db.Close()
 		if beginId >= id_end {
 			break
 		}
-		time.Sleep(time.Second)
+		//time.Sleep(time.Second*5)
 	}
 	//log.Printf("The number of pages processed by incremental task from %d to %d is: %d\n", id_start, id_end,pageNum)
 }

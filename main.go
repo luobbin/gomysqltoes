@@ -149,7 +149,7 @@ func task_fullload() {
 	//Initialize es index and other data
 	es_begin(index_name)
 
-	total_data := get_mysql_total(sql_str)
+	/*total_data := get_mysql_total(sql_str)
 	//Number of processing items corresponding to each task
 	var jobsize int
 	jobsize = total_data / numOfConcurrency
@@ -183,7 +183,12 @@ func task_fullload() {
 		res := <-ch
 		sum += res
 	}
-	wg.Wait()
+	wg.Wait()*/
+
+	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
+	id_start := 0
+	id_end := get_mysql_latsid(sql_str, primary_key)
+	sum := query_mysql_to_es_by_startid(sql_str, id_start, id_end)
 
 	//save success times
 	setDataConfValue("fullloadTimes", strconv.Itoa(fullloadTimes), "")
