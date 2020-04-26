@@ -190,7 +190,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 		}
 		log.Println("the last ID is", beginId)
 		wg.Add(1)
-		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: wg}
+		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: &wg}
 		//go save_es_data(buf, index_name, tasks,  wg)
 		pageNum++
 		db.Close()

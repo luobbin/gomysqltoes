@@ -191,6 +191,7 @@ func task_fullload() {
 	sum := query_mysql_to_es_by_startid(sql_str, id_start, id_end)
 
 	//save success times
+	setDataConfValue("lastPrimaryId", strconv.Itoa(id_end), "")
 	setDataConfValue("fullloadTimes", strconv.Itoa(fullloadTimes), "")
 	//Restore index configuration at end
 	es_end(index_name)
