@@ -33,7 +33,7 @@ var (
 	err             error
 	configFile      = flag.String("configFile", "etc/conf.ini", "Set profile file：")
 	manual          = flag.String("manual", "0", "manual control fullload：")
-	logon           = flag.String("logon", "0", "manual control fullload：")
+	logon           = flag.String("logon", "0", "log switch control fullload：")
 )
 
 type Chandata struct {
@@ -188,10 +188,10 @@ func task_fullload() {
 	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
 	id_start := 0
 	id_end := get_mysql_latsid(sql_str, primary_key)
+	setDataConfValue("lastPrimaryId", strconv.Itoa(id_end), "")
 	sum := query_mysql_to_es_by_startid(sql_str, id_start, id_end)
 
 	//save success times
-	setDataConfValue("lastPrimaryId", strconv.Itoa(id_end), "")
 	setDataConfValue("fullloadTimes", strconv.Itoa(fullloadTimes), "")
 	//Restore index configuration at end
 	es_end(index_name)
