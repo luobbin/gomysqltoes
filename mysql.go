@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func get_mysql() *sql.DB {
@@ -162,6 +163,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 		for i := range values {
 			scanArgs[i] = &values[i]
 		}
+		coltypes, _ := rows.ColumnTypes()
 
 		for rows.Next() {
 			//Save row data to record dictionary
@@ -169,13 +171,35 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 			if err != nil {
 				log.Printf("Sql row scan error %v \n", err)
 			}
-			record := make(map[string]string)
+
+			record := make(map[string]interface{})
 			for i, col := range values {
 				if col != nil {
-					record[columns[i]] = string(col.([]byte))
+					value := string(col.([]byte))
+					if columns[i] == primary_key {
+						beginId, _ = strconv.Atoi(value)
+					}
+					switch coltypes[i].DatabaseTypeName() {
+					case "VARCHAR", "CHAR", "TEXT":
+						record[columns[i]] = value
+					case "BOOL":
+						record[columns[i]], _ = strconv.ParseBool(value)
+					case "DOUBLE", "NUMERIC":
+						record[columns[i]], _ = strconv.ParseFloat(value, 64)
+					case "BIGINT", "INT", "TINYINT":
+						record[columns[i]], _ = strconv.Atoi(value)
+					case "DATETIME", "DATE":
+						loc, _ := time.LoadLocation("Asia/Shanghai") //设置时区
+						tt, _ := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
+						record[columns[i]] = tt
+					default:
+						record[columns[i]] = value
+						log.Printf("sql field type name is %v\n", coltypes[i].DatabaseTypeName())
+					}
 				}
 			}
-			beginId, _ = strconv.Atoi(record[primary_key])
+
+			//beginId, _ = strconv.Atoi(record.(map[string]string)[primary_key])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
@@ -227,19 +251,39 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		for i := range values {
 			scanArgs[i] = &values[i]
 		}
+		coltypes, _ := rows.ColumnTypes()
 
 		for rows.Next() {
 			err = rows.Scan(scanArgs...)
 			if err != nil {
 				log.Printf("Sql row scan error %v \n", err)
 			}
-			record := make(map[string]string)
+			record := make(map[string]interface{})
 			for i, col := range values {
 				if col != nil {
-					record[columns[i]] = string(col.([]byte))
+					value := string(col.([]byte))
+					if columns[i] == primary_key {
+						beginId, _ = strconv.Atoi(value)
+					}
+					switch coltypes[i].DatabaseTypeName() {
+					case "VARCHAR", "CHAR", "TEXT":
+						record[columns[i]] = value
+					case "BOOL":
+						record[columns[i]], _ = strconv.ParseBool(value)
+					case "DOUBLE", "NUMERIC":
+						record[columns[i]], _ = strconv.ParseFloat(value, 64)
+					case "BIGINT", "INT", "TINYINT":
+						record[columns[i]], _ = strconv.Atoi(value)
+					case "DATETIME", "DATE":
+						loc, _ := time.LoadLocation("Asia/Shanghai") //设置时区
+						tt, _ := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
+						record[columns[i]] = tt
+					default:
+						record[columns[i]] = value
+						log.Printf("sql field type name is %v\n", coltypes[i].DatabaseTypeName())
+					}
 				}
 			}
-			beginId, _ = strconv.Atoi(record[primary_key])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
