@@ -99,10 +99,10 @@ func run() {
 	c := cron.New(cron.WithSeconds())
 
 	//"0/5 * * * * *" Every 5S
-	c.AddFunc(timer_increment, task_increment)
+	c.AddFunc("CRON_TZ=Asia/Shanghai "+timer_increment, task_increment)
 
 	//"0 0 */1 * * *"	Hourly execution
-	c.AddFunc(timer_fullload, task_fullload)
+	c.AddFunc("CRON_TZ=Asia/Shanghai "+timer_fullload, task_fullload)
 	c.Start()
 
 	select {}
