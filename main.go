@@ -17,23 +17,24 @@ import (
 )
 
 var (
-	primary_key     string
-	index_name      string
-	page_size       int
-	sql_str         string
-	sql_conn        string
-	timer_increment string
-	timer_fullload  string
-	mutex           sync.Mutex
-	esClient        *elasticsearch.Client
-	dataConf        *goconfig.ConfigFile
-	mainConf        *goconfig.ConfigFile
-	configDataFile  string
-	wg              sync.WaitGroup
-	err             error
-	configFile      = flag.String("configFile", "etc/conf.ini", "Set profile file：")
-	manual          = flag.String("manual", "0", "manual control fullload：")
-	logon           = flag.String("logon", "0", "log switch control fullload：")
+	primary_key      string
+	index_name       string
+	index_docid_name string
+	page_size        int
+	sql_str          string
+	sql_conn         string
+	timer_increment  string
+	timer_fullload   string
+	mutex            sync.Mutex
+	esClient         *elasticsearch.Client
+	dataConf         *goconfig.ConfigFile
+	mainConf         *goconfig.ConfigFile
+	configDataFile   string
+	wg               sync.WaitGroup
+	err              error
+	configFile       = flag.String("configFile", "etc/conf.ini", "Set profile file：")
+	manual           = flag.String("manual", "0", "manual control fullload：")
+	logon            = flag.String("logon", "0", "log switch control fullload：")
 )
 
 type Chandata struct {
@@ -63,6 +64,7 @@ func main() {
 	//default settings
 	primary_key = getMainConfValue(mainConf, "PRIMARY_KEY", "")
 	index_name = getMainConfValue(mainConf, "INDEX_NAME", "")
+	index_docid_name = getMainConfValue(mainConf, "INDEX_DOCID_NAME", "")
 	sql_str = getMainConfValue(mainConf, "SQL_STR", "")
 	page_size = getMainConfInt(mainConf, "PAGE_SIZE", "")
 	timer_increment = getMainConfValue(mainConf, "TIMER_INCREMENT", "")

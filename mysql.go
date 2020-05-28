@@ -115,7 +115,7 @@ func query_mysql_to_es_by_startid_chan(sql_str string, id_start, id_end int, job
 			}
 			pkey := strings.ReplaceAll(primary_key, "a.", "")
 			beginId, _ = strconv.Atoi(record[pkey])
-			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
+			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, record[index_docid_name], "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
 				log.Fatalf("Cannot encode %v %d: %s", index_name, beginId, err)
@@ -201,7 +201,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 			}
 
 			//beginId, _ = strconv.Atoi(record.(map[string]string)[primary_key])
-			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
+			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%v" } }%s`, record[index_docid_name], "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
 				log.Fatalf("Cannot encode %v %d: %s", index_name, beginId, err)
@@ -285,7 +285,7 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 					}
 				}
 			}
-			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
+			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%v" } }%s`, record[index_docid_name], "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
 				log.Fatalf("Cannot encode recode %d: %s", beginId, err)
