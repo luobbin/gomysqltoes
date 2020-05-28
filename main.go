@@ -151,42 +151,6 @@ func task_fullload() {
 	//Initialize es index and other data
 	es_begin(index_name)
 
-	/*total_data := get_mysql_total(sql_str)
-	//Number of processing items corresponding to each task
-	var jobsize int
-	jobsize = total_data / numOfConcurrency
-	jobs := make([]chan int, numOfConcurrency)
-	var id_start, id_end int
-	//Increase the number of full backups
-	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
-	for i := 0; i < numOfConcurrency; i++ {
-		jobs[i] = make(chan int)
-		//get starting primary key ID
-		if i == 0 {
-			id_start = i * jobsize
-		} else {
-			id_start = id_end
-		}
-		//Get the ending primary key ID
-		if i+1 == numOfConcurrency {
-			id_end = get_mysql_latsid(sql_str, primary_key)
-		} else {
-			id_end = get_mysql_firstid(sql_str, primary_key, (i+1)*jobsize)
-		}
-		if i+1 == numOfConcurrency && fullloadTimes == 1 { //First fullload store last ID
-			setDataConfValue("lastPrimaryId", strconv.Itoa(id_end), "")
-		}
-		log.Printf("Worker %d: from %d to %d start doing\n", i, id_start, id_end)
-		wg.Add(1)
-		go query_mysql_to_es_by_startid(sql_str, id_start, id_end, jobs[i], &wg)
-	}
-	sum := 0
-	for _, ch := range jobs {
-		res := <-ch
-		sum += res
-	}
-	wg.Wait()*/
-
 	fullloadTimes := getDataConfInt("fullloadTimes", "") + 1
 	id_start := 0
 	id_end := get_mysql_latsid(sql_str, primary_key)
