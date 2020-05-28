@@ -113,7 +113,8 @@ func query_mysql_to_es_by_startid_chan(sql_str string, id_start, id_end int, job
 					record[columns[i]] = string(col.([]byte))
 				}
 			}
-			beginId, _ = strconv.Atoi(record[primary_key])
+			pkey := strings.ReplaceAll(primary_key, "a.", "")
+			beginId, _ = strconv.Atoi(record[pkey])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%d" } }%s`, beginId, "\n"))
 			json_data, err := json.Marshal(record)
 			if err != nil {
@@ -176,7 +177,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 			for i, col := range values {
 				if col != nil {
 					value := string(col.([]byte))
-					if columns[i] == primary_key {
+					if columns[i] == strings.ReplaceAll(primary_key, "a.", "") {
 						beginId, _ = strconv.Atoi(value)
 					}
 					switch coltypes[i].DatabaseTypeName() {
@@ -262,7 +263,7 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 			for i, col := range values {
 				if col != nil {
 					value := string(col.([]byte))
-					if columns[i] == primary_key {
+					if columns[i] == strings.ReplaceAll(primary_key, "a.", "") {
 						beginId, _ = strconv.Atoi(value)
 					}
 					switch coltypes[i].DatabaseTypeName() {
