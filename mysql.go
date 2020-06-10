@@ -17,7 +17,7 @@ func get_mysql() *sql.DB {
 	//sql_conn="root:123456@tcp(127.0.0.1:3306)/test?charset=utf8"
 	db, err := sql.Open("mysql", sql_conn)
 	checkErr(err)
-	db.SetConnMaxLifetime(time.Second * 5)
+	//db.SetConnMaxLifetime(time.Second * 5)
 	db.SetMaxIdleConns(0)
 	db.SetMaxOpenConns(200)
 	return db
