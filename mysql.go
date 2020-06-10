@@ -17,6 +17,9 @@ func get_mysql() *sql.DB {
 	//sql_conn="root:123456@tcp(127.0.0.1:3306)/test?charset=utf8"
 	db, err := sql.Open("mysql", sql_conn)
 	checkErr(err)
+	db.SetConnMaxLifetime(time.Second * 5)
+	db.SetMaxIdleConns(0)
+	db.SetMaxOpenConns(200)
 	return db
 }
 
@@ -24,8 +27,6 @@ func get_mysql() *sql.DB {
 func get_mysql_total(sql_str string) int {
 	var total int
 	db := get_mysql()
-	defer db.Close()
-
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
 	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
@@ -36,6 +37,10 @@ func get_mysql_total(sql_str string) int {
 		log.Fatal(err)
 	}
 	log.Printf("Get the total number of SQL as：%v,total number：%d \n", sql_str, total)
+	err = db.Close()
+	if err != nil {
+		log.Println(err)
+	}
 	return total
 }
 
@@ -43,7 +48,6 @@ func get_mysql_total(sql_str string) int {
 func get_mysql_firstid(sql_str string, field string, offset int) int {
 	var id int
 	db := get_mysql()
-	defer db.Close()
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
 	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
@@ -55,6 +59,10 @@ func get_mysql_firstid(sql_str string, field string, offset int) int {
 		log.Fatal(err)
 	}
 	log.Printf("Get the begin ID of SQL as：%v,total number：%d \n", sql_str, id)
+	err = db.Close()
+	if err != nil {
+		log.Println(err)
+	}
 	return id
 }
 
@@ -62,7 +70,6 @@ func get_mysql_firstid(sql_str string, field string, offset int) int {
 func get_mysql_latsid(sql_str string, field string) int {
 	var id int
 	db := get_mysql()
-	defer db.Close()
 	sql_str = strings.ToLower(sql_str)
 	sql_str = strings.Replace(sql_str, ":sql_last_value", "0", 1)
 	reg := regexp.MustCompile(`^select (?s:(.*?)) from `)
@@ -73,6 +80,10 @@ func get_mysql_latsid(sql_str string, field string) int {
 		log.Fatal(err)
 	}
 	log.Printf("Get the end ID of SQL as：%v,total number：%d \n", sql_str, id)
+	err = db.Close()
+	if err != nil {
+		log.Println(err)
+	}
 	return id
 }
 
@@ -152,9 +163,15 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 		tasks[pageNum%10] <- Chandata{indexName: index_name, buf: buf, Wg: &wg}
 		//go save_es_data(buf, index_name, tasks,  wg)
 		pageNum++
-		rows.Close() // 记得关闭rows连接
+		err = rows.Close() // 记得关闭rows连接
+		if err != nil {
+			log.Println(err)
+		}
 		if beginId >= id_end {
-			db.Close()
+			err = db.Close()
+			if err != nil {
+				log.Println(err)
+			}
 			break
 		}
 		//time.Sleep(time.Second*5)
@@ -239,9 +256,15 @@ func query_mysql_to_es_by_startid_nochan(sql_str string, id_start, id_end int) {
 		//go save_es_data(buf, index_name, &wg)
 		wg.Wait()
 		pageNum++
-		rows.Close() // 记得关闭rows连接
+		err = rows.Close() // 记得关闭rows连接
+		if err != nil {
+			log.Println(err)
+		}
 		if beginId >= id_end {
-			db.Close()
+			err = db.Close()
+			if err != nil {
+				log.Println(err)
+			}
 			break
 		}
 		//time.Sleep(time.Second*5)
