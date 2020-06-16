@@ -20,6 +20,7 @@ var (
 	primary_key      string
 	index_name       string
 	index_docid_name string
+	index_time_fomat int
 	page_size        int
 	sql_str          string
 	sql_conn         string
@@ -66,6 +67,7 @@ func main() {
 	primary_key = getMainConfValue(mainConf, "PRIMARY_KEY", "")
 	index_name = getMainConfValue(mainConf, "INDEX_NAME", "")
 	index_docid_name = getMainConfValue(mainConf, "INDEX_DOCID_NAME", "")
+	index_time_fomat = getMainConfInt(mainConf, "INDEX_TIME_FORMAT", "")
 	sql_str = getMainConfValue(mainConf, "SQL_STR", "")
 	page_size = getMainConfInt(mainConf, "PAGE_SIZE", "")
 	timer_increment = getMainConfValue(mainConf, "TIMER_INCREMENT", "")
@@ -110,6 +112,27 @@ func run() {
 
 	select {}
 }
+
+/*
+测试函数异常死机恢复（panic异常）
+func TestFuncPanicRecovery(t *testing.T) {
+	var buf syncWriter
+	cron := New(WithParser(secondParser),
+		WithChain(Recover(newBufLogger(&buf))))
+	cron.Start()
+	defer cron.Stop()
+	cron.AddFunc("* * * * * ?", func() {
+		panic("YOLO")
+	})
+
+	select {
+	case <-time.After(OneSecond):
+		if !strings.Contains(buf.String(), "YOLO") {
+			t.Error("expected a panic to be logged, got none")
+		}
+		return
+	}
+}*/
 
 //Incremental timer
 func task_increment() {

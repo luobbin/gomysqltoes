@@ -135,16 +135,20 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 					case "BIGINT", "INT", "TINYINT":
 						record[columns[i]], _ = strconv.Atoi(value)
 					case "DATETIME", "DATE":
-						loc, _ := time.LoadLocation("Asia/Shanghai") //设置时区
-						tt, _ := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
-						record[columns[i]] = tt
+						if index_time_fomat == 0 {
+							loc, _ := time.LoadLocation("Asia/Shanghai") //设置时区
+							tt, _ := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
+							record[columns[i]] = tt
+						} else {
+							record[columns[i]] = value
+						}
 					default:
 						record[columns[i]] = value
 						log.Printf("sql field type name is %v\n", coltypes[i].DatabaseTypeName())
 					}
 				}
 			}
-
+			//log.Println("the Record is", record)
 			//beginId, _ = strconv.Atoi(record.(map[string]string)[primary_key])
 			meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%v" } }%s`, record[index_docid_name], "\n"))
 			json_data, err := json.Marshal(record)
@@ -174,6 +178,7 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 			}
 			break
 		}
+		//break;
 		//time.Sleep(time.Second*5)
 	}
 	log.Printf("The number of pages processed by the sub process from %d to %d is:%d\n", id_start, id_end, pageNum)

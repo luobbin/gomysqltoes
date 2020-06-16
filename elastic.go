@@ -63,6 +63,7 @@ func save_es_data(tasks chan Chandata) {
 		if err != nil {
 			log.Fatalf("Failure indexing %v: %s", task.indexName, err)
 		}
+		//log.Printf("The Result of es bulk is:%v\n", res)
 		// If the whole request failed, print error and mark all documents as failed
 		if res.IsError() {
 			numErrors += numItems
