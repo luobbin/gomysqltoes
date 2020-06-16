@@ -47,7 +47,8 @@ type Chandata struct {
 func init() {
 	flag.Parse()
 	if *logon != "0" {
-		logFile, err := os.OpenFile(`etc/record.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		log_file := strings.Replace(*configFile, "etc/", "etc/log/", 1) + ".log"
+		logFile, err := os.OpenFile(log_file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Printf("Log file open Error: %v", err)
 		}
