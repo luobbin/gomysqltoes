@@ -82,7 +82,7 @@ func main() {
 	//log.Println(addrs)
 	esClient = get_es(addrs, es_conf["ES_USERNAME"], es_conf["ES_PASSWORD"])
 	//check the data file exits
-	configDataFile = strings.Replace(*configFile, "etc/", "etc/data_", 1)
+	configDataFile = strings.Replace(*configFile, "etc/", "etc/record/data_", 1)
 	dataConf, err = goconfig.LoadConfigFile(configDataFile)
 	if err != nil {
 		makeConf(configDataFile) //Create data profile
