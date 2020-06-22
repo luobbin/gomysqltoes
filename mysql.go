@@ -135,12 +135,13 @@ func query_mysql_to_es_by_startid(sql_str string, id_start, id_end int) int {
 					case "BIGINT", "INT", "TINYINT":
 						record[columns[i]], _ = strconv.Atoi(value)
 					case "DATETIME", "DATE":
-						if index_time_fomat == 0 {
-							loc, _ := time.LoadLocation("Asia/Shanghai") //设置时区
+						if index_time_fomat == 0 { //按本地时间
+							loc, _ := time.LoadLocation("Asia/Shanghai")
 							tt, _ := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
 							record[columns[i]] = tt
-						} else {
-							record[columns[i]] = value
+						} else { //按UTC时间
+							tt, _ := time.Parse("2006-01-02 15:04:05", value)
+							record[columns[i]] = tt
 						}
 					default:
 						record[columns[i]] = value
